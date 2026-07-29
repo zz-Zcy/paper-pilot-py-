@@ -121,8 +121,10 @@ pip install -e ".[dev]"
 ```
 
 - 代码格式化
+```bash
 black src tests
 ruff check src tests
+```
 
 ## 开发计划：
 - [ ] 目前只能通过接大模型api使用，后续会考虑增加本地模型支持
