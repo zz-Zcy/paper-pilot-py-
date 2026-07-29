@@ -55,7 +55,9 @@ python -m paperpilot.cli.main test-llm
 python -m paperpilot.cli.main list-providers
 ```
 
-- 项目结构：
+- 项目结构
+```
+   plain text
 paper-pilot-py-/
 ├── src/paperpilot/
 │   ├── cli/              # 命令行接口
@@ -74,8 +76,10 @@ paper-pilot-py-/
 ├── .env.example          # 环境变量模板
 ├── pyproject.toml        # 项目配置
 └── README.md             # 本文件
+```
 
 - 技术栈：
+```plain text
 Python 3.9+
 Typer — 命令行框架
 Rich — 终端美化
@@ -83,6 +87,7 @@ arxiv — arXiv 官方 API
 pdfplumber — PDF 文本提取
 Pydantic — 数据校验
 requests — HTTP 客户端
+```
 
 - 输出示例：
 ```markdown
@@ -109,17 +114,16 @@ requests — HTTP 客户端
 ...
 ```
 
-- 开发：
-# 安装开发依赖
+# 开发：
+- 安装开发依赖
+```bash
 pip install -e ".[dev]"
+```
 
-# 运行测试
-pytest
-
-# 代码格式化
+- 代码格式化
 black src tests
 ruff check src tests
 
-- 开发计划：
+## 开发计划：
 - [ ] 目前只能通过接大模型api使用，后续会考虑增加本地模型支持
 - [ ] 完善错误处理机制
