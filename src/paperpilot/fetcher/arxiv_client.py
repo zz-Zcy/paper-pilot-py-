@@ -19,17 +19,20 @@ class PaperMetadata:
 
 class ArxivClient:
     def __init__(self, max_results: int = 10):
-        self.client = arxiv.Client()
         self.max_results = max_results
-    
-    def search(self, query: str, sort_by: str = "submittedDate") -> List[PaperMetadata]:
+        self.client = arxiv.Client()
+
+    def search(self, query: str, sort_by: str = "submittedDate", max_results: int = None) -> List[PaperMetadata]:
+        if max_results is None:
+            max_results = self.max_results
+
         search = arxiv.Search(
             query=query,
-            max_results=self.max_results,
-            sort_by=getattr(arxiv.SortCriterion, sort_by, arxiv.SortCriterion.SubmittedDate)
+            max_results=max_results,
+            sort_by=getattr(arxiv.SortCriterion, sort_by, arxiv.SortCriterion.SubmittedDate),
         )
         return [self._to_metadata(result) for result in self.client.results(search)]
-    
+
     def _to_metadata(self, result: arxiv.Result) -> PaperMetadata:
         return PaperMetadata(
             arxiv_id=result.get_short_id(),
@@ -40,5 +43,27 @@ class ArxivClient:
             primary_category=result.primary_category,
             categories=result.categories,
             pdf_url=result.pdf_url,
-            comment=result.comment
+            comment=result.comment,
         )
+
+
+import os
+import requests
+from pathlib import Path
+
+
+def download_pdf(paper: PaperMetadata, output_dir: str = "./papers") -> str:
+    """下载论文 PDF"""
+    os.makedirs(output_dir, exist_ok=True)
+    filepath = os.path.join(output_dir, f"{paper.arxiv_id}.pdf")
+
+    if os.path.exists(filepath):
+        return filepath
+
+    response = requests.get(paper.pdf_url, timeout=60)
+    response.raise_for_status()
+
+    with open(filepath, "wb") as f:
+        f.write(response.content)
+
+    return filepath

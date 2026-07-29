@@ -7,8 +7,10 @@ from rich.table import Table
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from paperpilot.fetcher.arxiv_client import ArxivClient
+from paperpilot.fetcher.arxiv_client import ArxivClient, download_pdf
+from paperpilot.parser.pdf_extractor import PDFExtractor
 from paperpilot.summarizer.factory import LLMFactory
+from paperpilot.summarizer.prompts import PAPER_SUMMARY_TEMPLATE
 
 app = typer.Typer()
 console = Console()
@@ -36,6 +38,65 @@ def search(
         table.add_row(p.arxiv_id, p.title[:60], authors, p.published.strftime("%Y-%m-%d"))
     
     console.print(table)
+
+
+@app.command()
+def summarize(
+    arxiv_id: str = typer.Argument(..., help="论文 arXiv ID"),
+    output: str = typer.Option(None, "--output", "-o", help="输出文件路径"),
+    provider: str = typer.Option(None, "--provider", "-p", help="LLM 提供商"),
+):
+    """下载并总结单篇论文"""
+    console.print(f"📄 正在获取论文 {arxiv_id}...")
+    
+    # 1. 搜索论文元数据
+    client = ArxivClient()
+    papers = client.search(f"id:{arxiv_id}", max_results=1)
+    if not papers:
+        console.print("[red]❌ 论文未找到[/red]")
+        raise typer.Exit(1)
+    
+    paper = papers[0]
+    console.print(f"✅ 找到: {paper.title}")
+    
+    # 2. 下载 PDF
+    console.print("⬇️  下载 PDF...")
+    pdf_path = download_pdf(paper)
+    console.print(f"💾 已下载: {pdf_path}")
+    
+    # 3. 解析内容
+    console.print("📖 解析内容...")
+    extractor = PDFExtractor(pdf_path)
+    content = extractor.extract_text(max_pages=10)
+    
+    # 4. 生成总结
+    console.print("🤖 正在生成总结...")
+    llm = LLMFactory.create(provider)
+    
+    prompt = PAPER_SUMMARY_TEMPLATE.format(
+        title=paper.title,
+        authors=", ".join(paper.authors),
+        abstract=paper.abstract,
+        content=content[:8000]  # 限制长度
+    )
+    
+    summary = llm.summarize(prompt, stream=False)
+    
+    # 5. 输出
+    console.print("\n" + "="*50)
+    console.print(summary)
+    console.print("="*50)
+    
+    # 6. 保存文件
+    if output:
+        with open(output, "w", encoding="utf-8") as f:
+            f.write(f"# {paper.title}\n\n")
+            f.write(f"**作者**: {', '.join(paper.authors)}\n\n")
+            f.write(f"**arXiv ID**: {paper.arxiv_id}\n\n")
+            f.write(f"**PDF**: {paper.pdf_url}\n\n")
+            f.write("---\n\n")
+            f.write(summary)
+        console.print(f"\n💾 已保存到: {output}")
 
 
 @app.command()
